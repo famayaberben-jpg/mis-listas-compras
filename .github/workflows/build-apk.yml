@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -20,29 +19,22 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          export PATH="$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          set -e
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
 
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/16.0/bin/sdkmanager"
-          fi
+          # Acepta licencias sin romper el pipeline
+          yes 2>/dev/null | sdkmanager --licenses >/dev/null || true
 
-          if [ ! -x "$SDKMANAGER" ]; then
-            echo "sdkmanager no encontrado"
-            ls -R "$ANDROID_SDK_ROOT" || true
-            exit 1
-          fi
-
-          yes | "$SDKMANAGER" --licenses
-          "$SDKMANAGER" --install "platform-tools" "platforms;android-35"
+          # Instala los paquetes que necesitamos
+          sdkmanager --install "platform-tools" "platforms;android-35"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Build APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
